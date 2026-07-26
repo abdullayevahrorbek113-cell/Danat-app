@@ -1,92 +1,274 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Donat Do'koni</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: #f2f4fb; margin: 0; padding: 12px; }
-    .card { background: #fff; border-radius: 16px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-    .label { font-size: 11px; color: #8e8e93; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
-    .input-group { display: flex; gap: 8px; }
-    input { flex: 1; padding: 12px; border: 1px solid #e5e5ea; border-radius: 12px; font-size: 14px; outline: none; background: #f9f9fb; }
-    .btn-check { background: #8e8cfa; color: white; border: none; padding: 0 16px; border-radius: 12px; font-weight: 600; font-size: 13px; cursor: pointer; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .item-card { background: #fff; border-radius: 14px; padding: 12px; text-align: center; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.03); }
-    .item-card.active { border-color: #4f46e5; background: #f0f3ff; }
-    .item-title { font-weight: 700; font-size: 14px; color: #1c1c1e; }
-    .price { color: #3b82f6; font-weight: 700; font-size: 13px; margin-top: 4px; }
-    .buy-btn { width: 100%; background: #4f46e5; color: white; border: none; padding: 16px; border-radius: 18px; font-weight: 700; font-size: 16px; margin-top: 15px; cursor: pointer; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donat va SMM Do'koni</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-color: #2c3e50;
+            --primary-color: #5865F2;
+            --accent-color: #4CAF50;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 15px;
+            padding-bottom: 90px;
+        }
+        h2 { text-align: center; margin-bottom: 15px; color: #333; }
+        
+        /* Kategoriya tugmalari */
+        .categories {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .categories::-webkit-scrollbar { display: none; }
+        .cat-btn {
+            background: #e4e6eb;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            color: #4b4f56;
+            transition: 0.2s;
+        }
+        .cat-btn.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* ID kiritish qismi */
+        .id-box {
+            background: var(--card-bg);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 8px;
+        }
+        .id-box input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+        .id-box button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* Mahsulotlar paneli */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .product-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .product-card.selected {
+            border-color: var(--primary-color);
+            background: #f0f2ff;
+        }
+        .product-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #333;
+        }
+        .product-price {
+            font-size: 13px;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        /* Sotib olish tugmasi (Pastda qotirilgan) */
+        .footer-cart {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: white;
+            padding: 12px 20px;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.08);
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .checkout-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+        }
+        .hidden { display: none !important; }
+    </style>
 </head>
 <body>
 
-  <div class="card">
-    <span class="label">PLAYER ID / O'YINCHI ID</span>
-    <div class="input-group">
-      <input type="text" id="player_id" placeholder="ID kiritiring...">
-      <button class="btn-check" onclick="checkPlayer()">Tekshirish</button>
+    <h2>⚡️ Avto Do'kon</h2>
+
+    <!-- Kategoriyalar -->
+    <div class="categories">
+        <button class="cat-btn active" onclick="switchTab('pubg')">PUBG UC</button>
+        <button class="cat-btn" onclick="switchTab('ff')">Free Fire</button>
+        <button class="cat-btn" onclick="switchTab('standoff')">Standoff 2</button>
+        <button class="cat-btn" onclick="switchTab('tg')">Telegram</button>
+        <button class="cat-btn" onclick="switchTab('smm')">Nakrutka</button>
     </div>
-    <div id="player_name" style="margin-top: 8px; font-size: 13px; color: #10b981; font-weight: 600;"></div>
-  </div>
 
-  <span class="label" style="margin-left: 4px;">MAHSULOTNI TANLANG</span>
-  <div class="grid">
-    <div class="item-card" onclick="selectItem('110_diamond', 10700, this)">
-      <div class="item-title">110 💎</div>
-      <div class="price">10 700 so'm</div>
+    <!-- ID yoki Havola kiritish -->
+    <div class="id-box">
+        <input type="text" id="userInput" placeholder="O'yin ID yoki Havolani kiriting...">
+        <button onclick="checkInput()">Tekshirish</button>
     </div>
-    <div class="item-card" onclick="selectItem('341_diamond', 32500, this)">
-      <div class="item-title">341 💎</div>
-      <div class="price">32 500 so'm</div>
+
+    <!-- Mahsulotlar Ro'yxati -->
+    <div id="productsContainer" class="products-grid">
+        <!-- JavaScript orqali to'ldiriladi -->
     </div>
-    <div class="item-card" onclick="selectItem('572_diamond', 52800, this)">
-      <div class="item-title">572 💎</div>
-      <div class="price">52 800 so'm</div>
+
+    <!-- Pastki tasdiqlash tugmasi -->
+    <div class="footer-cart">
+        <button class="checkout-btn" onclick="buyProduct()">Sotib olish</button>
     </div>
-    <div class="item-card" onclick="selectItem('1166_diamond', 106000, this)">
-      <div class="item-title">1166 💎</div>
-      <div class="price">106 000 so'm</div>
-    </div>
-  </div>
 
-  <button class="buy-btn" onclick="submitOrder()">Sotib olish</button>
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
 
-  <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
+        let currentTab = 'pubg';
+        let selectedProduct = null;
 
-    let selectedProduct = null;
+        const products = {
+            pubg: [
+                { id: 'p1', name: '60 UC', price: 11900 },
+                { id: 'p2', name: '120 UC', price: 23800 },
+                { id: 'p3', name: '325 UC', price: 60900 },
+                { id: 'p4', name: '660 UC', price: 119000 }
+            ],
+            ff: [
+                { id: 'f1', name: '110 Olmos', price: 10700 },
+                { id: 'f2', name: '341 Olmos', price: 32500 },
+                { id: 'f3', name: '572 Olmos', price: 52800 },
+                { id: 'f4', name: '1166 Olmos', price: 106000 }
+            ],
+            standoff: [
+                { id: 's1', name: '100 Gold', price: 12000 },
+                { id: 's2', name: '500 Gold', price: 55000 },
+                { id: 's3', name: '1000 Gold', price: 105000 },
+                { id: 's4', name: '3000 Gold', price: 310000 }
+            ],
+            tg: [
+                { id: 't1', name: '1 Oylik Premium', price: 28000 },
+                { id: 't2', name: '3 Oylik Premium', price: 169000 },
+                { id: 't3', name: '100 Yulduz (Stars)', price: 25000 }
+            ],
+            smm: [
+                { id: 'm1', name: 'Instagram Followers (1000)', price: 15000 },
+                { id: 'm2', name: 'Instagram Likes (1000)', price: 5000 },
+                { id: 'm3', name: 'Telegram Obunachi (1000)', price: 20000 },
+                { id: 'm4', name: 'Telegram Ko\'rishlar', price: 3000 }
+            ]
+        };
 
-    function selectItem(id, price, element) {
-      document.querySelectorAll('.item-card').forEach(el => el.classList.remove('active'));
-      element.classList.add('active');
-      selectedProduct = { id, price };
-    }
+        function switchTab(tab) {
+            currentTab = tab;
+            selectedProduct = null;
+            
+            document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
 
-    function checkPlayer() {
-      const id = document.getElementById('player_id').value;
-      if (!id) return alert("Iltimos, ID kiriting!");
-      document.getElementById('player_name').innerText = "⏳ Tekshirilmoqda...";
-      setTimeout(() => {
-        document.getElementById('player_name').innerText = "✅ Nikneym topildi!";
-      }, 800);
-    }
+            renderProducts();
+        }
 
-    function submitOrder() {
-      const id = document.getElementById('player_id').value;
-      if (!id || !selectedProduct) {
-        alert("Iltimos, ID kiriting va mahsulotni tanlang!");
-        return;
-      }
-      tg.sendData(JSON.stringify({
-        player_id: id,
-        product: selectedProduct.id,
-        price: selectedProduct.price
-      }));
-    }
-  </script>
+        function renderProducts() {
+            const container = document.getElementById('productsContainer');
+            container.innerHTML = '';
+            
+            products[currentTab].forEach(prod => {
+                const card = document.createElement('div');
+                card.className = `product-card ${selectedProduct && selectedProduct.id === prod.id ? 'selected' : ''}`;
+                card.innerHTML = `
+                    <div class="product-title">${prod.name}</div>
+                    <div class="product-price">${prod.price.toLocaleString()} so'm</div>
+                `;
+                card.onclick = () => selectProduct(prod, card);
+                container.appendChild(card);
+            });
+        }
+
+        function selectProduct(prod, element) {
+            document.querySelectorAll('.product-card').forEach(c => c.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedProduct = prod;
+        }
+
+        function checkInput() {
+            const val = document.getElementById('userInput').value;
+            if(!val) {
+                alert("Iltimos, ID yoki havolani kiriting!");
+            } else {
+                alert("Ma'lumot topildi va tasdiqlandi!");
+            }
+        }
+
+        function buyProduct() {
+            const inputVal = document.getElementById('userInput').value;
+            if (!selectedProduct) {
+                alert("Iltimos, mahsulotni tanlang!");
+                return;
+            }
+            if (!inputVal) {
+                alert("Iltimos, ID yoki havolani kiriting!");
+                return;
+            }
+
+            const data = {
+                product: selectedProduct.name,
+                price: selectedProduct.price,
+                target: inputVal
+            };
+
+            tg.sendData(JSON.stringify(data));
+            tg.close();
+        }
+
+        renderProducts();
+    </script>
 </body>
 </html>
