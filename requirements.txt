@@ -1,2 +1,2 @@
 aiogram
-yt-dlp --upgrade
+yt-dlp
