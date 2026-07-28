@@ -78,22 +78,20 @@ async def download_video(message: types.Message):
     else:
         await message.answer("Iltimos, to'g'ri havola yuboring.")
 
-# Render uchun soxta veb-server (Timed Out xatosining oldini oladi)
+# Render uchun zudlik bilan port ochuvchi HTTP server
 async def handle(request):
-    return web.Response(text="Bot is running!")
+    return web.Response(text="Bot is running and active!")
 
-async def web_server():
-    app = web.Application()
-    app.router.add_get('/', handle)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    port = int(os.environ.get("PORT", 10000))
-    site = web.TCPSite(runner, '0.0.0.0', port)
-    await site.start()
+app = web.Application()
+app.router.add_get('/', handle)
+
+async def on_startup(app):
+    # Bot pollingni alohida task sifatida ishga tushiramiz
+    asyncio.create_task(executor.start_polling(dp, skip_updates=True))
 
 if __name__ == '__main__':
-    # Veb server va Telegram botni birga ishga tushirish
     import asyncio
-    loop = asyncio.get_event_loop()
-    loop.create_task(web_server())
-    executor.start_polling(dp, skip_updates=True)
+    # Render beradigan portni olamiz
+    port = int(os.environ.get("PORT", 10000))
+    app.on_startup.append(on_startup)
+    web.run_app(app, host='0.0.0.0', port=port)
