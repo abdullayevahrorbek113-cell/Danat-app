@@ -1,2 +1,4 @@
-aiogram==3.13.1
+
+aiogram==3.13.1 --only-binary=:all:
+pydantic-core --only-binary=:all:
 yt-dlp
