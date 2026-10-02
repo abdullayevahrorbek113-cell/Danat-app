@@ -1,35 +1,45 @@
 import os
-from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
-# Render port binding uchun oddiy HTTP server
+# ==========================================
+# 1. RENDER & UPTIMEROBOT HEALTH CHECK SERVER
+# ==========================================
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
+        self.send_header('Content-type', 'text/html')
         self.end_headers()
-        self.wfile.write(b"Bot is alive!")
+        self.wfile.write(b"OK - Bot is running!")
+
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
+
+    # Ortqcha loglar konsolni to'ldirmasligi uchun
+    def log_message(self, format, *args):
+        return
 
 def run_http_server():
-    port = int(os.environ.get("PORT", 4000))
+    port = int(os.environ.get("PORT", 8080))
     server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
     server.serve_forever()
 
-# Tokeningiz
+# ==========================================
+# 2. BOT SOZLAMALARI VA MA'LUMOTLAR
+# ==========================================
 TOKEN = "8469058145:AAHDnKQfiS-isebvX8hHwrvSo6cuoEfaNfU"
 bot = telebot.TeleBot(TOKEN)
 
-# >>> O'ZINGIZNING TELEGRAM ID RAQAMINGIZ <<<
 ADMIN_ID = 8622029343  
 ADMIN_USERNAME = "@a_ahrorbek11"
 KARTA_RAQAMI = "9860260115435265"
 KARTA_EGASI = "Shamsiddinova A."
 
-# Majburiy obuna kanali
 REQUIRED_CHANNELS = ["@danatapp"]
 
-# Narxlar bazasi
 prices = {
     "Free Fire": {
         "Almazlar": {
@@ -109,6 +119,9 @@ user_data = {}
 user_balances = {}
 pending_amounts = {}
 
+# ==========================================
+# 3. YORDAMCHI FUNKSIYALAR
+# ==========================================
 def check_subscriptions(user_id):
     for channel in REQUIRED_CHANNELS:
         try:
@@ -132,6 +145,9 @@ def get_main_menu():
     markup.add(KeyboardButton("👤 Admin bilan bog'lanish"), KeyboardButton("📋 Narxlar va qoidalar"))
     return markup
 
+# ==========================================
+# 4. HANDLERLAR (XABAR QABUL QILUVCHILAR)
+# ==========================================
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     chat_id = message.chat.id
@@ -139,7 +155,7 @@ def send_welcome(message):
     if not check_subscriptions(chat_id):
         bot.send_message(
             chat_id,
-            "⚠️ **Botdan foydalanish uchun quyidagi kanalga obuna bo'lishingiz kerak:**",
+            "⚠️️ **Botdan foydalanish uchun quyidagi kanalga obuna bo'lishingiz kerak:**",
             reply_markup=get_subscription_keyboard(),
             parse_mode="Markdown"
         )
@@ -163,14 +179,14 @@ def add_balance(message):
         return
     args = message.text.split()
     if len(args) < 3:
-        bot.reply_to(message, "⚠️ Xato format! Ishlatilishi:\n`/payme [foydalanuvchi_id] [summa]`", parse_mode="Markdown")
+        bot.reply_to(message, "⚠️️ Xato format! Ishlatilishi:\n`/payme [foydalanuvchi_id] [summa]`", parse_mode="Markdown")
         return
         
     try:
         target_user_id = int(args[1])
         amount = int(args[2])
     except ValueError:
-        bot.reply_to(message, "⚠️ ID va summa raqamlarda kiritilishi kerak!")
+        bot.reply_to(message, "⚠️ ID va summa faqat raqamlarda kiritilishi kerak!")
         return
     
     if target_user_id not in user_balances:
@@ -187,8 +203,8 @@ def add_balance(message):
             f"🎉 **Tabriklaymiz!**\n\nAdmin hisobingizni **{amount:,} so'm** bilan to'ldirdi.\n💰 Yangi balans: **{user_balances[target_user_id]['balance']:,} so'm**", 
             parse_mode="Markdown"
         )
-    except Exception as e:
-        print(f"Xabar yuborishda xatolik: {e}")
+    except Exception:
+        pass
 
 @bot.message_handler(func=lambda message: message.text in ["🎮 Donat qilish", "💰 Mening hisobim", "👤 Admin bilan bog'lanish", "📋 Narxlar va qoidalar"])
 def handle_menu(message):
@@ -447,7 +463,7 @@ def process_player_id(message):
     item = user_data[chat_id].get("item")
     
     if not (game and category and item):
-        bot.send_message(chat_id, "⚠️ Seans muddati o'tdi. Iltimos, qaytadan tanlang.", reply_markup=get_main_menu())
+        bot.send_message(chat_id, "⚠️ Seans muddati o'tdi. Iltimos, menyudan qaytadan tanlang.", reply_markup=get_main_menu())
         return
 
     price = prices[game][category][item]
@@ -499,7 +515,12 @@ def process_player_id(message):
         parse_mode="Markdown"
     )
 
+# ==========================================
+# 5. BOT VA SERVERNI ISHGA TUSHIRISH
+# ==========================================
 if __name__ == "__main__":
+    # Ping javoblarini beruvchi HTTP serverni fonda (Thread) ishga tushirish
     threading.Thread(target=run_http_server, daemon=True).start()
-    print("Bot ishga tushdi...")
-    bot.infinity_polling()
+    
+    print("Bot va Health-Check serveri muvaffaqiyatli ishga tushdi...")
+    bot.infinity_polling(skip_pending=True)
