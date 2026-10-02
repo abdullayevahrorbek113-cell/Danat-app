@@ -1,11 +1,26 @@
+import os
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+
+# Render port binding uchun oddiy HTTP server
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is alive!")
+
+def run_http_server():
+    port = int(os.environ.get("PORT", 4000))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    server.serve_forever()
 
 # Tokeningiz
 TOKEN = "8469058145:AAHDnKQfiS-isebvX8hHwrvSo6cuoEfaNfU"
 bot = telebot.TeleBot(TOKEN)
 
-# >>> O'ZINGIZNING TELEGRAM ID RAqAMINGIZ <<<
+# >>> O'ZINGIZNING TELEGRAM ID RAQAMINGIZ <<<
 ADMIN_ID = 8622029343  
 ADMIN_USERNAME = "@a_ahrorbek11"
 KARTA_RAQAMI = "9860260115435265"
@@ -151,8 +166,12 @@ def add_balance(message):
         bot.reply_to(message, "⚠️ Xato format! Ishlatilishi:\n`/payme [foydalanuvchi_id] [summa]`", parse_mode="Markdown")
         return
         
-    target_user_id = int(args[1])
-    amount = int(args[2])
+    try:
+        target_user_id = int(args[1])
+        amount = int(args[2])
+    except ValueError:
+        bot.reply_to(message, "⚠️ ID va summa raqamlarda kiritilishi kerak!")
+        return
     
     if target_user_id not in user_balances:
         user_balances[target_user_id] = {"balance": 0, "history": []}
@@ -168,8 +187,8 @@ def add_balance(message):
             f"🎉 **Tabriklaymiz!**\n\nAdmin hisobingizni **{amount:,} so'm** bilan to'ldirdi.\n💰 Yangi balans: **{user_balances[target_user_id]['balance']:,} so'm**", 
             parse_mode="Markdown"
         )
-    except:
-        pass
+    except Exception as e:
+        print(f"Xabar yuborishda xatolik: {e}")
 
 @bot.message_handler(func=lambda message: message.text in ["🎮 Donat qilish", "💰 Mening hisobim", "👤 Admin bilan bog'lanish", "📋 Narxlar va qoidalar"])
 def handle_menu(message):
@@ -233,7 +252,7 @@ def callback_handler(call):
         if check_subscriptions(chat_id):
             try:
                 bot.delete_message(chat_id, call.message.message_id)
-            except:
+            except Exception:
                 pass
             bot.send_message(
                 chat_id,
@@ -281,7 +300,7 @@ def callback_handler(call):
                         f"🎉 **Tabriklaymiz!**\n\nAdmin to'lovingizni tasdiqladi va hisobingizga **{amount:,} so'm** qo'shildi!\n💰 Yangi balans: **{user_balances[target_user_id]['balance']:,} so'm**", 
                         parse_mode="Markdown"
                     )
-                except:
+                except Exception:
                     pass
         else:
             if target_user_id in pending_amounts:
@@ -296,7 +315,7 @@ def callback_handler(call):
             )
             try:
                 bot.send_message(target_user_id, "❌ **Diqqat!** To'lov chekingiz admin tomonidan rad etildi.", parse_mode="Markdown")
-            except:
+            except Exception:
                 pass
         return
 
@@ -311,8 +330,10 @@ def callback_handler(call):
         bot.register_next_step_handler(call.message, process_topup_amount)
         
     elif call.data.startswith("game_"):
-        game_name = call.data.split("_")[1]
-        user_data[chat_id] = {"game": game_name}
+        game_name = call.data.split("_", 1)[1]
+        if chat_id not in user_data:
+            user_data[chat_id] = {}
+        user_data[chat_id]["game"] = game_name
         
         keyboard = InlineKeyboardMarkup()
         for category in prices[game_name].keys():
@@ -321,9 +342,12 @@ def callback_handler(call):
         bot.edit_message_text(f"Siz **{game_name}** ni tanladingiz.\n\nBo'limni tanlang:", chat_id, call.message.message_id, reply_markup=keyboard, parse_mode="Markdown")
         
     elif call.data.startswith("cat_"):
-        parts = call.data.split("_")
+        parts = call.data.split("_", 2)
         game_name = parts[1]
         category_name = parts[2]
+        
+        if chat_id not in user_data:
+            user_data[chat_id] = {}
         user_data[chat_id]["category"] = category_name
         
         keyboard = InlineKeyboardMarkup()
@@ -334,7 +358,9 @@ def callback_handler(call):
         bot.edit_message_text(f"Mahsulotni tanlang:", chat_id, call.message.message_id, reply_markup=keyboard, parse_mode="Markdown")
         
     elif call.data.startswith("item_"):
-        item_name = call.data.split("_")[1]
+        item_name = call.data.split("_", 1)[1]
+        if chat_id not in user_data:
+            user_data[chat_id] = {}
         user_data[chat_id]["item"] = item_name
         
         bot.edit_message_text(
@@ -355,13 +381,15 @@ def process_topup_amount(message):
             add_balance(message)
         return
 
-    if not text.isdigit():
+    if not text or not text.isdigit():
         bot.send_message(chat_id, "⚠️ Iltimos, faqat raqamlarda summa kiriting (masalan: `50000`):")
         bot.register_next_step_handler(message, process_topup_amount)
         return
         
     amount = int(text)
-    user_data[chat_id] = {"topup_amount": amount}
+    if chat_id not in user_data:
+        user_data[chat_id] = {}
+    user_data[chat_id]["topup_amount"] = amount
     
     bot.send_message(chat_id, f"✅ Summa: **{amount:,} so'm**.\nEndi to'lov **chekining rasmini (skrinshot)** yuboring:", parse_mode="Markdown")
     bot.register_next_step_handler(message, process_topup_receipt)
@@ -417,6 +445,11 @@ def process_player_id(message):
     game = user_data[chat_id].get("game")
     category = user_data[chat_id].get("category")
     item = user_data[chat_id].get("item")
+    
+    if not (game and category and item):
+        bot.send_message(chat_id, "⚠️ Seans muddati o'tdi. Iltimos, qaytadan tanlang.", reply_markup=get_main_menu())
+        return
+
     price = prices[game][category][item]
     
     if chat_id not in user_balances:
@@ -466,5 +499,7 @@ def process_player_id(message):
         parse_mode="Markdown"
     )
 
-print("Bot ishga tushdi...")
-bot.infinity_polling()
+if __name__ == "__main__":
+    threading.Thread(target=run_http_server, daemon=True).start()
+    print("Bot ishga tushdi...")
+    bot.infinity_polling()
