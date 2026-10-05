@@ -23,7 +23,7 @@ REQUIRED_CHANNELS = ["@danatapp"]
 # Foiz emas, har bir xarid uchun beriladigan aniq PUL miqdori (so'mda)
 REFERRAL_BONUS_SUM = 2000 
 
-PAYERPIN_API_KEY = "pp_live_xxxxxxxxxxxx"
+PAYERPIN_API_KEY = "pp_live_6ADwQ1lCogyY-QeD7_xx2knKO6YQ8sAE"
 PAYERPIN_URL = "https://api.payerpin.uz/api/v2/order"
 
 PAYERPIN_PRODUCT_IDS = {
