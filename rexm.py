@@ -3,7 +3,7 @@ import requests
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
 # ==================== SOZLAMALAR ====================
-TELEGRAM_TOKEN = "8469058145:AAHDnKQfiS-isebvX8hHwrvSo6cuoEfaNfU"
+TELEGRAM_TOKEN = "8469058145:AAFLn5nP1JlK0gBPKXHANWqDqfkCiT7LyS0"
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 # ASOSIY ADMIN (OWNER) ID VA TIZIM MA'LUMOTLARI
