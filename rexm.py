@@ -8,7 +8,7 @@ from pydantic import BaseModel
 import uvicorn
 
 # ==================== BOT VA SOZLAMALAR ====================
-TOKEN = "8469058145:AAHDnKQfiS-isebvX8hHwrvSo6cuoEfaNfU"
+TOKEN = "8469058145:AAHtkDcA7J7SJ3ahYXvLwNIcgdZXOO9usQk"
 bot = telebot.TeleBot(TOKEN)
 
 SERVER_DOMAIN = "http://YOUR_SERVER_IP:8000"
