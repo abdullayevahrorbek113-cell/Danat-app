@@ -593,6 +593,8 @@ def callback_handler(call):
         bot.delete_message(chat_id, call.message.message_id)
       except:
         pass
+      if chat_id not in user_balances:
+        user_balances[chat_id] = {"balance": 0, "history": []}
       bot.send_message(
           chat_id,
           "✅ Obunangiz tasdiqlandi!",
