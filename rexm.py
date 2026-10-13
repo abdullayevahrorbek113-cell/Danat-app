@@ -12,6 +12,7 @@ from telebot.types import (
     KeyboardButton,
     ReplyKeyboardMarkup,
 )
+import uvicorn
 
 # ==================== BOT VA SOZLAMALAR ====================
 TOKEN = "8469058145:AAFPShoVCsBlJRDiNdK5Nhj8TCTTIyp-7As"
@@ -30,16 +31,14 @@ REFERRAL_BONUS_SUM = 2000
 PAYERPIN_API_KEY = "pp_live_MQg4XpRQ5sHIa58_f9lFur-eicXj31vm"
 PAYERPIN_URL = "https://api.payerpin.uz/api/v2/order"
 
-# PAYERPIN MAHSULOT ID-LARI (Payerpin panelidagi ID-lar bilan bir xil bo'lishi shart)
+# PAYERPIN MAHSULOT ID-LARI
 PAYERPIN_PRODUCT_IDS = {
-    # Free Fire
     "110 Almaz": 101,
     "341 Almaz": 102,
     "572 Almaz": 103,
     "1166 Almaz": 104,
     "2398 Almaz": 105,
     "6160 Almaz": 106,
-    # PUBG Mobile
     "60 UC": 201,
     "120 UC": 202,
     "180 UC": 203,
@@ -52,7 +51,6 @@ PAYERPIN_PRODUCT_IDS = {
     "1800 UC": 210,
     "3850 UC": 211,
     "8100 UC": 212,
-    # Telegram Stars
     "50 Stars": 301,
     "100 Stars": 302,
     "250 Stars": 303,
@@ -254,7 +252,7 @@ def api_create_stars_order(
   }
 
 
-# ==================== PAYERPIN API INTEGRATSIYASI (TUG'IRLANDI) ====================
+# ==================== PAYERPIN API INTEGRATSIYASI ====================
 def send_payerpin_order(product_name, player_id):
   product_id = PAYERPIN_PRODUCT_IDS.get(product_name)
   if not product_id:
@@ -271,10 +269,8 @@ def send_payerpin_order(product_name, player_id):
   account_id = id_parts[0]
   zone_id = id_parts[1] if len(id_parts) > 1 else None
 
-  # Payload shakllantirish
   payload = {"product_id": int(product_id), "account_id": str(account_id)}
 
-  # zone_id faqat mavjud bo'lsa payloadga qo'shiladi
   if zone_id:
     payload["zone_id"] = str(zone_id)
 
@@ -296,7 +292,6 @@ def send_payerpin_order(product_name, player_id):
     ]:
       return True, "Muvaffaqiyatli bajarildi"
 
-    # Xatolik xabarini tushunarli matnga o'g'irish
     if isinstance(res, dict):
       if "message" in res:
         error_msg = res["message"]
@@ -638,7 +633,6 @@ def callback_handler(call):
         chat_id, "Asosiy menyu:", reply_markup=get_main_menu(chat_id)
     )
 
-  # --- ADMIN CALLBACKLARI ---
   elif call.data == "admin_add_balance" and chat_id in ADMINS:
     msg = bot.send_message(
         chat_id,
@@ -742,7 +736,6 @@ def callback_handler(call):
     )
     bot.register_next_step_handler(msg, save_new_price, g_name, c_name, i_name)
 
-  # --- BUYURTMA CALLBACKLARI ---
   elif call.data.startswith("game_"):
     g_idx = int(call.data.split("_")[1])
     game_name = list(prices.keys())[g_idx]
@@ -1119,7 +1112,6 @@ def process_player_id(message):
       "Obunalar" in category
   )
 
-  # Manual rejim (Payerpin ID o'rnatilmagan Telegram xizmatlari uchun)
   if is_telegram_service and item not in PAYERPIN_PRODUCT_IDS:
     user_balances[chat_id]["balance"] -= price
     user_balances[chat_id]["history"].append(
@@ -1148,7 +1140,6 @@ def process_player_id(message):
         pass
     return
 
-  # Avtomatik rejim: Payerpin API orqali yuborish
   user_balances[chat_id]["balance"] -= price
 
   if chat_id in referrers:
