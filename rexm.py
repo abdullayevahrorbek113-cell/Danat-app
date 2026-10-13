@@ -180,7 +180,7 @@ def verify_api_key(x_api_key: str = Header(None, alias="X-API-KEY")):
   return api_keys_db[x_api_key]
 
 
-@app.get("/", response_class=PlainTextResponse)
+@app.api_route("/", methods=["GET", "HEAD"], response_class=PlainTextResponse)
 def read_root():
   return "Bot va API Server 24/7 ishlamoqda!"
 
@@ -254,7 +254,7 @@ def api_create_stars_order(
   }
 
 
-# ==================== PAYERPIN API INTEGRATSIYASI ====================
+# ==================== PAYERPIN API INTEGRATSIYASI (TUG'IRLANDI) ====================
 def send_payerpin_order(product_name, player_id):
   product_id = PAYERPIN_PRODUCT_IDS.get(product_name)
   if not product_id:
@@ -271,8 +271,10 @@ def send_payerpin_order(product_name, player_id):
   account_id = id_parts[0]
   zone_id = id_parts[1] if len(id_parts) > 1 else None
 
+  # Payload shakllantirish
   payload = {"product_id": int(product_id), "account_id": str(account_id)}
 
+  # zone_id faqat mavjud bo'lsa payloadga qo'shiladi
   if zone_id:
     payload["zone_id"] = str(zone_id)
 
@@ -294,6 +296,7 @@ def send_payerpin_order(product_name, player_id):
     ]:
       return True, "Muvaffaqiyatli bajarildi"
 
+    # Xatolik xabarini tushunarli matnga o'g'irish
     if isinstance(res, dict):
       if "message" in res:
         error_msg = res["message"]
@@ -1116,6 +1119,7 @@ def process_player_id(message):
       "Obunalar" in category
   )
 
+  # Manual rejim (Payerpin ID o'rnatilmagan Telegram xizmatlari uchun)
   if is_telegram_service and item not in PAYERPIN_PRODUCT_IDS:
     user_balances[chat_id]["balance"] -= price
     user_balances[chat_id]["history"].append(
@@ -1144,6 +1148,7 @@ def process_player_id(message):
         pass
     return
 
+  # Avtomatik rejim: Payerpin API orqali yuborish
   user_balances[chat_id]["balance"] -= price
 
   if chat_id in referrers:
