@@ -1015,4 +1015,215 @@ def save_new_price(message, game, cat, item):
     prices[game][cat][item] = new_p
     bot.send_message(
         message.chat.id,
-        f"✅ **{item}** narxi **{new_p:,}
+        f"✅ **{item}** narxi **{new_p:,} so'm** ga o'zgartirildi!",
+        parse_mode="Markdown",
+    )
+  else:
+    bot.send_message(message.chat.id, "❌ Faqat raqam kiriting!")
+
+
+def process_topup_amount(message):
+  chat_id = message.chat.id
+  text = message.text
+  if text and text.startswith("/"):
+    return
+  if not text.isdigit():
+    bot.send_message(chat_id, "⚠ Faqat raqam kiriting:")
+    bot.register_next_step_handler(message, process_topup_amount)
+    return
+  user_data[chat_id] = {"topup_amount": int(text)}
+  bot.send_message(
+      chat_id,
+      f"✅ Summa: **{int(text):,} so'm**.\nEndi **chek rasmini** yuboring:",
+      parse_mode="Markdown",
+  )
+  bot.register_next_step_handler(message, process_topup_receipt)
+
+
+def process_topup_receipt(message):
+  chat_id = message.chat.id
+  if message.content_type == "photo":
+    amount = user_data.get(chat_id, {}).get("topup_amount", 0)
+    file_id = message.photo[-1].file_id
+    pending_amounts[chat_id] = amount
+    admin_markup = InlineKeyboardMarkup()
+    admin_markup.add(
+        InlineKeyboardButton(
+            "✅ Tasdiqlash", callback_data=f"approve_{chat_id}"
+        ),
+        InlineKeyboardButton("❌ Rad etish", callback_data=f"reject_{chat_id}"),
+    )
+    for adm in ADMINS:
+      try:
+        bot.send_photo(
+            adm,
+            file_id,
+            caption=(
+                f"💳 **Yangi to'lov cheki!**\n👤 ID: `{chat_id}`\n💰 Summa:"
+                f" **{amount:,} so'm**"
+            ),
+            reply_markup=admin_markup,
+            parse_mode="Markdown",
+        )
+      except Exception as e:
+        print(e)
+    bot.reply_to(message, "✅ **Chekingiz adminga yuborildi!**", parse_mode="Markdown")
+  else:
+    bot.send_message(chat_id, "⚠ Iltimos, **rasm** yuboring!")
+    bot.register_next_step_handler(message, process_topup_receipt)
+
+
+# ==================== BUYURTMANI BAJARISH ====================
+def process_player_id(message):
+  chat_id = message.chat.id
+  player_id = message.text.strip()
+  if chat_id not in user_data:
+    user_data[chat_id] = {}
+  user_data[chat_id]["player_id"] = player_id
+
+  game = user_data[chat_id].get("game")
+  category = user_data[chat_id].get("category")
+  item = user_data[chat_id].get("item")
+
+  if not (game and category and item):
+    bot.send_message(
+        chat_id,
+        "❌ Buyurtmada xatolik yuz berdi. Qaytadan urinib ko'ring.",
+        reply_markup=get_main_menu(chat_id),
+    )
+    return
+
+  price = prices[game][category][item]
+
+  if chat_id not in user_balances:
+    user_balances[chat_id] = {"balance": 0, "history": []}
+  current_balance = user_balances[chat_id]["balance"]
+
+  if current_balance < price:
+    bot.send_message(
+        chat_id,
+        f"⚠️ **Balansda yetarli mablag' yo'q!**\n💰 Balans:"
+        f" **{current_balance:,} so'm**\n📦 Narx: **{price:,} so'm**",
+        reply_markup=get_main_menu(chat_id),
+        parse_mode="Markdown",
+    )
+    return
+
+  is_telegram_service = ("⭐ Telegram Stars" in game) or (
+      "Obunalar" in category
+  )
+
+  if is_telegram_service and item not in PAYERPIN_PRODUCT_IDS:
+    user_balances[chat_id]["balance"] -= price
+    user_balances[chat_id]["history"].append(
+        f"• Buyurtma: {item} (-{price:,} so'm) ⏳"
+    )
+
+    bot.send_message(
+        chat_id,
+        f"✅ **Buyurtmangiz qabul qilindi!**\n📦 Mahsulot: **{item}**\n👤 Kiritilgan"
+        f" ID/Username: `{player_id}`\n\n**Tez orada adminga yuboriladi va"
+        " bajariladi.**",
+        reply_markup=get_main_menu(chat_id),
+        parse_mode="Markdown",
+    )
+
+    for adm in ADMINS:
+      try:
+        bot.send_message(
+            adm,
+            f"⭐ **YANGI TELEGRAM BUYURTMA!**\n👤 Foydalanuvchi ID:"
+            f" `{chat_id}`\n📦 Mahsulot: **{item}**\n🔗 ID/Username:"
+            f" `{player_id}`\n💰 Narxi: **{price:,} so'm**",
+            parse_mode="Markdown",
+        )
+      except:
+        pass
+    return
+
+  user_balances[chat_id]["balance"] -= price
+
+  if chat_id in referrers:
+    ref_id = referrers[chat_id]
+    bonus = REFERRAL_BONUS_SUM
+    if ref_id not in user_balances:
+      user_balances[ref_id] = {"balance": 0, "history": []}
+    user_balances[ref_id]["balance"] += bonus
+    user_balances[ref_id]["history"].append(
+        f"• Referal pul bonusi: +{bonus:,} so'm 🎉"
+    )
+    referral_earnings[ref_id] = referral_earnings.get(ref_id, 0) + bonus
+    try:
+      bot.send_message(
+          ref_id,
+          f"🎉 **Taklif bonusi!** Do'stingiz xaridi uchun **+{bonus:,} so'm**"
+          " balansingizga qo'shildi.",
+      )
+    except:
+      pass
+
+  success, msg = send_payerpin_order(item, player_id)
+
+  if success:
+    user_balances[chat_id]["history"].append(
+        f"• Buyurtma: {item} (-{price:,} so'm) ✅"
+    )
+    bot.send_message(
+        chat_id,
+        f"✅ **Buyurtmangiz avtomatik amalga oshirildi!**\n📦 Mahsulot:"
+        f" **{item}**\n💰 Qolgan balans: **{user_balances[chat_id]['balance']:,}"
+        " so'm**",
+        reply_markup=get_main_menu(chat_id),
+        parse_mode="Markdown",
+    )
+
+    for adm in ADMINS:
+      try:
+        bot.send_message(
+            adm,
+            f"⚡ **AVTO-BUYURTMA BAJARILDI!**\n👤 ID: `{chat_id}`\n🕹 {game} -"
+            f" {item}\n🆔 Target ID: `{player_id}`",
+            parse_mode="Markdown",
+        )
+      except:
+        pass
+  else:
+    user_balances[chat_id]["balance"] += price
+    bot.send_message(
+        chat_id,
+        f"⚠️ **Avtomatik bajarishda xatolik yuz berdi!**\nMablag' balansingizga"
+        f" qaytarildi.\nXatolik: `{msg}`",
+        reply_markup=get_main_menu(chat_id),
+        parse_mode="Markdown",
+    )
+
+    for adm in ADMINS:
+      try:
+        bot.send_message(
+            adm,
+            f"❌ **AVTO-BUYURTMA XATOLIGI!**\n👤 ID: `{chat_id}`\n📦"
+            f" {item}\n🆔 Target ID: `{player_id}`\n⚠ Payerpin Javobi:"
+            f" **{msg}**",
+            parse_mode="Markdown",
+        )
+      except:
+        pass
+
+
+# ==================== PARALLEL RUN ====================
+def start_bot():
+  print("Bot ishga tushdi...")
+  bot.infinity_polling()
+
+
+def start_api():
+  print("FastAPI ishga tushdi...")
+  port = int(os.environ.get("PORT", 8000))
+  uvicorn.run(app, host="0.0.0.0", port=port)
+
+
+if __name__ == "__main__":
+  t1 = threading.Thread(target=start_bot)
+  t2 = threading.Thread(target=start_api)
+  t1.start()
+  t2.start()
