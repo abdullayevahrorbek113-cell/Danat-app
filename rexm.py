@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 
-TOKEN = "SIZNING_BOT_TOKENINGIZ"
+TOKEN = "8469058145:AAH7GP95O0sI6EtYyS-wVeOdV0j8yaP4Jt0"
 WEBAPP_URL = "SIZNING_WEBAPP_HOSTING_URL_MANZILINGIZ" # Masalan: https://sitingiz.uz
 
 bot = Bot(token=TOKEN)
